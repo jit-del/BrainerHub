@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Company, Employee
-from .serializers import EmployeeSerializer
+from .serializers import EmployeeSerializer,CompanySerializer
 
 class InsertDataFromExcel(APIView):
     def post(self, request, format=None):
@@ -29,10 +29,10 @@ class InsertDataFromExcel(APIView):
 
             # Create unique companies from the data
             companies_data = set(row['COMPANY_NAME'] for row in data)
-            companies = [Company(company_name=company_name) for company_name in companies_data]
-            Company.objects.bulk_create(companies)
-
-            company_name_to_id = {company.company_name: company.id for company in companies}
+            for company_name in companies_data:
+                company_serializer = CompanySerializer(data={'company_name': company_name})
+                if company_serializer.is_valid():
+                    company_serializer.save()
 
             # Prepare employee data with corresponding company foreign keys
             employees_data = []
@@ -42,11 +42,12 @@ class InsertDataFromExcel(APIView):
                     row.get('MANAGER_ID') and
                     row.get('DEPARTMENT_ID')
                 ):
+                    company = Company.objects.get(company_name=row['COMPANY_NAME'])
                     employees_data.append({
                         'first_name': row['FIRST_NAME'],
                         'last_name': row['LAST_NAME'],
                         'phone_number': row['PHONE_NUMBER'],
-                        'company': company_name_to_id[row['COMPANY_NAME']],
+                        'company': company.id,
                         'salary': int(row['SALARY']),
                         'manager_id': int(row['MANAGER_ID']),
                         'department_id': int(row['DEPARTMENT_ID'])
