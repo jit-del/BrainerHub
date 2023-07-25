@@ -29,10 +29,14 @@ class InsertDataFromExcel(APIView):
 
             # Create unique companies from the data
             companies_data = set(row['COMPANY_NAME'] for row in data)
+            companies_data_list=[]
+
             for company_name in companies_data:
-                company_serializer = CompanySerializer(data={'company_name': company_name})
-                if company_serializer.is_valid():
-                    company_serializer.save()
+                companies_data_list.append({'company_name': company_name})
+                
+            company_serializer = CompanySerializer(data=companies_data_list,many=True)
+            if company_serializer.is_valid():
+                company_serializer.save()
 
             # Prepare employee data with corresponding company foreign keys
             employees_data = []
