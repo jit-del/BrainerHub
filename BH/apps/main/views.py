@@ -29,16 +29,16 @@ class InsertDataFromExcel(APIView):
 
             # Create unique companies from the data
             companies_data = set(row['COMPANY_NAME'] for row in data)
-            companies_data_list=[]
-
-            for company_name in companies_data:
-                companies_data_list.append({'company_name': company_name})
-                
-            company_serializer = CompanySerializer(data=companies_data_list,many=True)
-            if company_serializer.is_valid():
-                company_serializer.save()
-
+            
             # Prepare employee data with corresponding company foreign keys
+            company_name_to_pk = {}
+            for company_name in companies_data:
+                company_serializer = CompanySerializer(data={'company_name': company_name})
+                if company_serializer.is_valid():
+                    company = company_serializer.save()
+                    company_name_to_pk[company_name] = company.pk
+
+            # Prepare employee data with corresponding company primary keys
             employees_data = []
             for row in data:
                 if (
@@ -46,12 +46,11 @@ class InsertDataFromExcel(APIView):
                     row.get('MANAGER_ID') and
                     row.get('DEPARTMENT_ID')
                 ):
-                    company = Company.objects.get(company_name=row['COMPANY_NAME'])
                     employees_data.append({
                         'first_name': row['FIRST_NAME'],
                         'last_name': row['LAST_NAME'],
                         'phone_number': row['PHONE_NUMBER'],
-                        'company': company.id,
+                        'company': company_name_to_pk[row['COMPANY_NAME']],
                         'salary': int(row['SALARY']),
                         'manager_id': int(row['MANAGER_ID']),
                         'department_id': int(row['DEPARTMENT_ID'])
